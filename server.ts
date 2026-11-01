@@ -3,6 +3,7 @@ import { createMessageBroker } from "./src/factories/broker-factory";
 import { MessageBroker } from "./src/types/broker";
 
 const startServer = async () => {
+
   let broker: MessageBroker | null = null;
   try {
     broker = createMessageBroker();
