@@ -51,6 +51,9 @@ export class KafkaBroker implements MessageBroker {
         partition,
         message,
       }: EachMessagePayload) => {
+        if (!message.value) {
+        throw new Error("Received Kafka message with empty value")
+    }
         // Logic to handle incoming messages.
         console.log({
           value: message.value.toString(),

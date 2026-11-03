@@ -2,19 +2,20 @@
 
 import { BRAND } from "../constants";
 import { EVENT_TYPE } from "../types";
+import { OrderNotificationData } from "../types/notification-types";
 import { capitalizeFirstChar } from "./handleSubject";
 import { customerName, getItems, getSubtotal, money, orderDate, orderRef, paymentLabel } from "./orderHandler";
 
 /* ------------------------------------------------------------------ */
-export const handleText = (evenType: string, data: any) => {
+export const handleText = (evenType: string, data: OrderNotificationData) => {
     switch (evenType) {
         case EVENT_TYPE.ORDER_CREATE: {
             const { mode, status } = paymentLabel(data);
             const items = getItems(data)
                 .map(
-                    (i: any) =>
-                        `  - ${i.name} x ${i.qty}  ${money(i.lineTotal)}` +
-                        (i.details ? `\n    ${i.details}` : "")
+                    (item) =>
+                        `  - ${item.name} x ${item.qty}  ${money(item.lineTotal)}` +
+                        (item.details ? `\n    ${item.details}` : "")
                 )
                 .join("\n");
  
@@ -51,6 +52,6 @@ export const handleText = (evenType: string, data: any) => {
                 .join("\n");
         }
         default:
-            return `Hi ${customerName(data)}, there is an update on your order #${orderRef(data)}. Current status: ${capitalizeFirstChar(data.orderStatus)}. Team ${BRAND.name}`;
+            return `Hi ${customerName(data)}, there is an update on your order #${orderRef(data)}. Current status: ${capitalizeFirstChar(data.orderStatus ?? "-")}. Team ${BRAND.name}`;
     }
 };

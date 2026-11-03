@@ -1,5 +1,6 @@
 import { BRAND, statusColors } from "../constants";
 import { EVENT_TYPE } from "../types";
+import { OrderNotificationData } from "../types/notification-types";
 import { capitalizeFirstChar } from "./handleSubject";
 import { customerName, esc, getItems, getSubtotal, money, orderDate, orderRef, paymentLabel } from "./orderHandler";
 
@@ -9,10 +10,10 @@ import { customerName, esc, getItems, getSubtotal, money, orderDate, orderRef, p
 
 
 const emailLayout = (opts: {
-    title: string;
-    headerSubtitle: string;
-    preheader: string;
-    body: string;
+  title: string;
+  headerSubtitle: string;
+  preheader: string;
+  body: string;
 }) => `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -62,74 +63,80 @@ const emailLayout = (opts: {
 
 // Order of steps shown in the progress tracker
 const STATUS_STEPS = [
-    { key: "received", label: "Received" },
-    { key: "confirmed", label: "Confirmed" },
-    { key: "prepared", label: "Prepared" },
-    { key: "out_for_delivery", label: "On the way" },
-    { key: "delivered", label: "Delivered" },
+  { key: "received", label: "Received" },
+  { key: "confirmed", label: "Confirmed" },
+  { key: "prepared", label: "Prepared" },
+  { key: "out_for_delivery", label: "On the way" },
+  { key: "delivered", label: "Delivered" },
 ];
 
 // Headline + message shown for each status
 const STATUS_COPY: Record<string, { headline: string; message: string }> = {
-    received: {
-        headline: "We've received your order",
-        message: "Your order is in. We'll confirm it shortly.",
-    },
-    confirmed: {
-        headline: "Your order is confirmed",
-        message: "Great news! The restaurant has accepted your order and will start preparing it soon.",
-    },
-    prepared: {
-        headline: "Your order is ready",
-        message: "Your food has been freshly prepared and is waiting for a delivery partner.",
-    },
-    out_for_delivery: {
-        headline: "Your order is on the way",
-        message: "Our delivery partner has picked up your order and is heading to you. Please keep your phone handy.",
-    },
-    delivered: {
-        headline: "Your order has been delivered",
-        message: "Enjoy your meal! We'd love to hear how it was.",
-    },
+  received: {
+    headline: "We've received your order",
+    message: "Your order is in. We'll confirm it shortly.",
+  },
+  confirmed: {
+    headline: "Your order is confirmed",
+    message: "Great news! The restaurant has accepted your order and will start preparing it soon.",
+  },
+  prepared: {
+    headline: "Your order is ready",
+    message: "Your food has been freshly prepared and is waiting for a delivery partner.",
+  },
+  out_for_delivery: {
+    headline: "Your order is on the way",
+    message: "Our delivery partner has picked up your order and is heading to you. Please keep your phone handy.",
+  },
+  delivered: {
+    headline: "Your order has been delivered",
+    message: "Enjoy your meal! We'd love to hear how it was.",
+  },
 };
 
 const readableStatus = (status: string) =>
-    capitalizeFirstChar(String(status ?? "").replace(/_/g, " "));
+  capitalizeFirstChar(String(status ?? "").replace(/_/g, " "));
 
 const progressTracker = (currentKey: string) => {
-    const currentIndex = STATUS_STEPS.findIndex((s) => s.key === currentKey);
+  const currentIndex = STATUS_STEPS.findIndex((s) => s.key === currentKey);
 
-    const cells = STATUS_STEPS.map((step, index) => {
-        const done = currentIndex >= 0 && index <= currentIndex;
-        const isCurrent = index === currentIndex;
-        return `
+  const cells = STATUS_STEPS.map((step, index) => {
+    const done = currentIndex >= 0 && index <= currentIndex;
+    const isCurrent = index === currentIndex;
+    return `
           <td width="20%" align="center" style="padding:0 2px;">
             <div style="height:6px;border-radius:3px;background:${done ? BRAND.color : "#e5e7eb"};"></div>
             <div style="margin-top:8px;font-size:11px;line-height:1.3;color:${done ? "#111" : "#999"};${isCurrent ? "font-weight:bold;" : ""}">
               ${esc(step.label)}
             </div>
           </td>`;
-    }).join("");
+  }).join("");
 
-    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${cells}</tr></table>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${cells}</tr></table>`;
 };
 
-const orderCreatedHtml = (data: any) => {
+const orderCreatedHtml = (data: OrderNotificationData) => {
   const { mode, status } = paymentLabel(data);
-  const badge = statusColors[status.toLowerCase()] ?? statusColors.pending;
+  const badge =
+    statusColors[status.toLowerCase()] ??
+    statusColors.pending ??
+    {
+      bg: "#fef3c7",
+      fg: "#92400e",
+    };
 
   const rows = getItems(data)
     .map(
-      (i: any) => {
-        console.log("Data = ", i)
+      (item) => {
+        console.log("Data = ", item)
         return `
         <tr>
           <td style="padding:12px 0;border-bottom:1px solid #eee;font-size:14px;color:#222;">
-            <strong>${esc(i.name)}</strong> &times; ${i.qty}
-            ${i.details ? `<br><span style="font-size:12px;color:#777;">${esc(i.details)}</span>` : ""}
+            <strong>${esc(item.name)}</strong> &times; ${item.qty}
+            ${item.details ? `<br><span style="font-size:12px;color:#777;">${esc(item.details)}</span>` : ""}
           </td>
           <td align="right" style="padding:12px 0;border-bottom:1px solid #eee;font-size:14px;color:#222;white-space:nowrap;">
-            ${money(i.lineTotal)}
+            ${money(item.lineTotal)}
           </td>
         </tr>`
       }
@@ -262,14 +269,14 @@ const orderCreatedHtml = (data: any) => {
 </html>`;
 };
 
-const orderStatusHtml = (data: any) => {
-    const statusKey = String(data.orderStatus ?? "").toLowerCase();
-    const copy = STATUS_COPY[statusKey] ?? {
-        headline: `Your order is now ${readableStatus(statusKey)}`,
-        message: "There's a new update on your order.",
-    };
+const orderStatusHtml = (data: OrderNotificationData) => {
+  const statusKey = String(data.orderStatus ?? "").toLowerCase();
+  const copy = STATUS_COPY[statusKey] ?? {
+    headline: `Your order is now ${readableStatus(statusKey)}`,
+    message: "There's a new update on your order.",
+  };
 
-    const body = `
+  const body = `
         <!-- Greeting -->
         <tr>
           <td style="padding:28px 32px 8px;">
@@ -313,26 +320,26 @@ const orderStatusHtml = (data: any) => {
           </td>
         </tr>`;
 
-    return emailLayout({
-        title: "Order Status Update",
-        headerSubtitle: "Order status update",
-        preheader: `Order #${orderRef(data)}: ${copy.headline}.`,
-        body,
-    });
+  return emailLayout({
+    title: "Order Status Update",
+    headerSubtitle: "Order status update",
+    preheader: `Order #${orderRef(data)}: ${copy.headline}.`,
+    body,
+  });
 };
 
 /* ------------------------------------------------------------------ */
 /* Entry point                                                         */
 
-export const handleHtml = (evenType: string, data: any) => {
-    switch (evenType) {
-        case EVENT_TYPE.ORDER_CREATE:
-            return orderCreatedHtml(data); // your existing function
-        case EVENT_TYPE.ORDER_STATUS_UPDATE:
-            return orderStatusHtml(data);
-        case EVENT_TYPE.PAYMENT_STATUS_UPDATE:
-            return `<p>Hi ${esc(customerName(data))}, there is an update on your order #${orderRef(data)}. Payment status: <strong>${esc(capitalizeFirstChar(data.paymentStatus))}</strong>.</p>`;
-        default:
-            return "";
-    }
+export const handleHtml = (evenType: string, data: OrderNotificationData) => {
+  switch (evenType) {
+    case EVENT_TYPE.ORDER_CREATE:
+      return orderCreatedHtml(data); // your existing function
+    case EVENT_TYPE.ORDER_STATUS_UPDATE:
+      return orderStatusHtml(data);
+    case EVENT_TYPE.PAYMENT_STATUS_UPDATE:
+      return `<p>Hi ${esc(customerName(data))}, there is an update on your order #${orderRef(data)}. Payment status: <strong>${esc(capitalizeFirstChar(data.paymentStatus ?? "pending"))}</strong>.</p>`;
+    default:
+      return "";
+  }
 };

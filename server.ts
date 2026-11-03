@@ -13,8 +13,13 @@ const startServer = async () => {
      if(broker){
       await broker.disconnectConsumer();
     }
-    logger.error("Error happened: ", err.message);
-    process.exit(1);
+    if (err instanceof Error) {
+    logger.error("Error happened:", err.message);
+  } else {
+    logger.error("Unknown error happened:", String(err));
+  }
+
+  process.exit(1);
   }
 };
 
